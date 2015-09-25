@@ -1,0 +1,69 @@
+---
+title: "DA_PCM"
+author: "Saw Simeon, Chanin Nantasanamat"
+date: "September 25, 2015"
+output: html_document
+---
+
+Histogram plot for Diene
+```{r, echo = TRUE}
+library(readxl)
+library(caret)
+library(paran)
+library(cowplot)
+
+setwd("/Volumes/SAW SIMEON/DA_PCM")
+diene <- read_excel("Diene.xlsx")
+dienophile <- read_excel("Dienophile.xlsx")
+### pca analysis for diene
+diene_df <- diene[, 4:ncol(diene)]
+#diene_df <- diene_df[ , -nearZeroVar(diene_df)]
+descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
+                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
+diene_df <- diene_df[, descriptors]
+plot <- list(13)
+for (i in descriptors) {
+  data <- diene_df[, i]
+  plot <- ggplot(data = diene_df, aes(data)) + geom_histogram(col = "black", fill = "blue") + xlab(i) +
+    ylab("Frequency") + geom_vline(data = diene_df, aes(xintercept = mean(data), na.rm = TRUE),
+                                   colour = "black", linetype = "dashed", size = 1) +
+    theme(
+      axis.text.x = element_text(colour = "black", face = "bold"),
+      axis.text.y = element_text(colour = "black", face = "bold"),
+      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)
+    )
+  print(plot)
+}
+
+```
+
+Histogram for dienophile
+
+```{r, echo=TRUE}
+dienophile_df <- dienophile[, 4:ncol(dienophile)]
+descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
+                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
+dienophile_df <- dienophile_df[, descriptors]
+plot <- list(13)
+for (i in descriptors) {
+  data <- dienophile_df[, i]
+  plot <- ggplot(data = dienophile_df, aes(data)) + geom_histogram(col = "black", fill = "red") + xlab(i) +
+    ylab("Frequency") + geom_vline(data = dienophile_df, aes(xintercept = mean(data), na.rm = TRUE),
+                                   colour = "black", linetype = "dashed", size = 1) +
+    theme(
+      axis.text.x = element_text(colour = "black", face = "bold"),
+      axis.text.y = element_text(colour = "black", face = "bold"),
+      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)
+    )
+  print(plot)
+}
+
+```
+
+Selection Optimal PCs for Diene and Dienophile via Horn's Parallel Analysis
+```{r, echo=TRUE}
+set.seed(1)
+paran(diene_df)
+paran(dienophile_df)
+```
+
