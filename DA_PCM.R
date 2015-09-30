@@ -505,6 +505,7 @@ J48_10_CV <- function(x, Product){
       results <- results$table
       results <- table(prediction, actual)
       results <- as.numeric(results)
+      results <- rbind(myRes, results)
       ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -532,6 +533,7 @@ J48_10_CV <- function(x, Product){
       results <- results$table
       results <- table(prediction, actual)
       results <- as.numeric(results)
+      results <- rbind(myRes, results)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -559,6 +561,7 @@ J48_10_CV <- function(x, Product){
       results <- results$table
       results <- table(prediction, actual)
       results <- as.numeric(results)
+      results <- rbind(myRes, results)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
