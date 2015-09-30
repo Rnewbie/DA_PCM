@@ -1,134 +1,152 @@
 library(readxl)
-Diene <- read_excel("Diene.xlsx")
-Dienophile <- read_excel("Dienophile.xlsx")
-Product <- Diene$Product
-
-Diene <- Diene[, c("MeanAbs", "RBN","ALOGP", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole", "MW",  "HOMO", "LUMO", "GAP")]
-Dienophile <- Dienophile[, c("MeanAbs","ALOGP", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole", "MW",  "HOMO", "LUMO", "GAP")]
-
-results_Diene <- data.frame(t(sapply(Diene, function(cl) list (Mean_of_Diene = round(mean(cl, na.rm = TRUE), digits = 3),
-                                                                   SD_Diene = round(sd(cl, na.rm  = TRUE), digits = 3)))))
-results_Dienophile <- data.frame(t(sapply(Dienophile, function(cl) list(Mean_of_Dienophile= round(mean(cl, na.rm = TRUE), digits = 3),
-                                                                    SD_Dienophile = round(sd(cl, na.rm = TRUE), digits = 3)))))
-results <- cbind(results_Diene, results_Dienophile)
-Descriptor_Name <- row.names(results)
-df <- cbind(Descriptor_Name, results)
-my.df <- data.frame(lapply(df, as.character), stringsAsFactors=FALSE)
-write.csv(my.df, file = "EDA_Substructure.csv", row.names = FALSE)
-print(df, row.names = FALSE)
-
-####latext table
-library(xtable)
-table <- xtable(results, row.names = FALSE)
-print(table)
-
-normality_test_Diene <- t(sapply(Diene, function(x)  shapiro.test(x)[c("statistic", "p.value",
-                                                                        "method")]))
-
-df <- normality_test_Diene[, 1:2]
-df <- round(df, digits = 3)
-my.df$significant_level <- ifelse(my.df$p.value < 0.05, "Significant", "Unsignificant")
-label <- row.names(df)
-normality <- cbind(label, my.df)
-table <- xtable(normality, row.names = FALSE)
-print(table)
-
-### plot 
-library(readxl)
-Diene <- read_excel("Diene.xlsx")
-Dienophile <- read_excel("Dienophile.xlsx")
-Product <- Diene$Product
-Product <- as.factor(Product)
-
-data <- rbind(Diene, Dienophile)
-data <- cbind(Product, data)
-
-Mann_Whitney <- t(sapply(data[-1], function(x) unlist(pairwise.wilcox.test(x, data$Product, 
-                                                                           alt = "two.sided",
-                                                                           conf.int = TRUE,
-                                                                           conf.level = 0.95,
-                                                                           exact = FALSE)[c("statistic.W", "p.value", 
-                                                                                            "method", "conf.int",
-                                                                                            "conf.level")])))
-
-colnames(data)[7] <-  "TPSA"
-top3 <- data[, c("Product", "HOMO", "LUMO", "GAP")]
-fit <- randomForest(Product~., data = data)
-J48 <- J48(Product~., data = data)
-
-
-
-
-a <- ggplot(data, aes(x = HOMO, fill = Product)) +
-  geom_histogram(binwidth= 1, alpha = 0.5, colour = "black", position = "dodge") +
-  theme(
-    legend.position=("none"),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)) +
-  #labs(y = expression( Predicted~(pIC[50])~ activity)) +
-  #labs(x = expression( Exprimental~(pIC[50])~ activity))
-  labs(y =  "Frequency") +
-coord_cartesian(ylim = c(0, 120), xlim = c(-2, 2))
-
-b <- ggplot(data, aes(x = LUMO, fill = Product)) +
-  geom_histogram(binwidth= 1, alpha = 0.5, colour = "black", position = "dodge") +
-  theme(
-    legend.position=("none"),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)) + 
-  #labs(y = expression( Predicted~(pIC[50])~ activity)) +
-  #labs(x = expression( Exprimental~(pIC[50])~ activity))
-  labs(y =  "Frequency") +
-coord_cartesian(ylim = c(0, 120), xlim = c(-2, 2))
-
-c <- ggplot(data, aes(x = GAP, fill = Product)) +
-  geom_histogram(binwidth= 1, alpha = 0.5, colour = "black", position = "dodge") +
-  theme(
-    legend.position=("none"),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)) +
-  #labs(y = expression( Predicted~(pIC[50])~ activity)) +
-  #labs(x = expression( Exprimental~(pIC[50])~ activity))
-  labs(y =  "Frequency") +
-  coord_cartesian(ylim = c(0, 120), xlim = c(-2, 2))
+library(caret)
+library(paran)
 library(cowplot)
-plot_grid(a, b, c, labels = c(" ", " ", " "), ncol =3, label_size = 20)
-### Diene VS Dienophile
-Diene$Label <- "Diene"
-Dienophile$Label <- "Dienophile"
-data <- rbind(Diene, Dienophile)
-d <- ggplot(data, aes(x = HOMO, fill = Label)) +
-  geom_histogram(binwidth= 1, alpha = 0.5, colour = "black", position = "dodge") +
+
+setwd("/Volumes/SAW SIMEON/DA_PCM")
+diene <- read_excel("Diene.xlsx")
+dienophile <- read_excel("Dienophile.xlsx")
+### pca analysis for diene
+diene_df <- diene[, 4:ncol(diene)]
+#diene_df <- diene_df[ , -nearZeroVar(diene_df)]
+descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
+                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
+diene_df <- diene_df[, descriptors]
+plot <- list(13)
+for (i in descriptors) {
+  data <- diene_df[, i]
+  plot <- ggplot(data = diene_df, aes(data)) + geom_histogram(col = "black", fill = "blue") + xlab(i) +
+    ylab("Frequency") + geom_vline(data = diene_df, aes(xintercept = mean(data), na.rm = TRUE),
+                                   colour = "black", linetype = "dashed", size = 1) +
+    theme(
+      axis.text.x = element_text(colour = "black", face = "bold"),
+      axis.text.y = element_text(colour = "black", face = "bold"),
+      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)
+    )
+  print(plot)
+}
+
+
+
+
+
+paran(diene_df)
+pca <- prcomp(diene_df, center = TRUE, scale. = TRUE, retx = TRUE)
+summary(pca)
+scores <- pca$x[,1:5]
+loadings <- pca$rotation[,1:5]
+km <- kmeans(scores, center=3, nstart=5)
+ggdata <- data.frame(scores, Cluster=km$cluster)
+#ggdata <- cbind(compoundname, ggdata)
+### paper numbering
+library(grid)
+set.seed(23)
+x <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
+  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
+  ggtitle("") +
+  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
+               geom="polygon", level=0.95, alpha=0.2) +
+  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
+  #geom_text(aes(label=compoundnumber), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
   theme(
     legend.position=("none"),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)) +
-  #labs(y = expression( Predicted~(pIC[50])~ activity)) +
-  #labs(x = expression( Exprimental~(pIC[50])~ activity))
-  labs(y =  "Frequency") +
-  coord_cartesian(ylim = c(0, 120), xlim = c(-2, 2))
+    #plot.title = element_text(size=20, face="bold", colour="black", vjust = -1, hjust=-0.21),
+    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
+    axis.text.y = element_text(size = 15),
+    axis.ticks.length = unit(0.3, "cm"),
+    axis.text.x = element_text(size = 15),
+    legend.title=element_blank(),
+    axis.title.x = element_text(color="black", size=20),
+    axis.title.y = element_text(color="black", size=20)) +
+  coord_cartesian(ylim = c(-5, 5), xlim = c(-10, 10))
+x
 
-
-e <- ggplot(data, aes(x = LUMO, fill = Label)) +
-  geom_histogram(binwidth= 1, alpha = 0.5, colour = "black", position = "dodge") +
+km <- kmeans(loadings, center=2, nstart=5)
+ggdata <- data.frame(loadings, Cluster=km$cluster)
+### paper numbering
+library(grid)
+set.seed(23)
+a <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
+  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
+  ggtitle("") +
+  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
+               geom="polygon", level=0.95, alpha=0.2) +
+  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
+  #geom_text(aes(label=labelcompound), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
   theme(
     legend.position=("none"),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)) +
-  #labs(y = expression( Predicted~(pIC[50])~ activity)) +
-  #labs(x = expression( Exprimental~(pIC[50])~ activity))
-  labs(y =  "Frequency") +
-  coord_cartesian(ylim = c(0, 120), xlim = c(-2, 2))
+    #plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
+    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
+    axis.text.y = element_text(size = 15),
+    axis.ticks.length = unit(0.3, "cm"),
+    axis.text.x = element_text(size = 15),
+    legend.title=element_blank(),
+    axis.title.x = element_text(color="black", size=20),
+    axis.title.y = element_text(color="black", size=20)) +
+  coord_cartesian(ylim = c(-1, 1), xlim = c(-1, 1))
 
-f <- ggplot(data, aes(x = GAP, fill = Label)) +
-  geom_histogram(binwidth= 1, alpha = 0.5, colour = "black", position = "dodge") +
+
+### pca analysis for dienophile
+dienophile_df <- dienophile[, 4:ncol(dienophile)]
+descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
+                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
+dienophile_df <- dienophile_df[, descriptors]
+pca_dienophile <- prcomp(dienophile_df, center = TRUE, scale. = TRUE, retx = TRUE)
+paran(dienophile_df)
+summary(pca_dienophile)
+scores_dienophile <- pca_dienophile$x[,1:5]
+loadings_dienophile <- pca_dienophile$rotation[,1:5]
+
+km <- kmeans(scores_dienophile, center=3, nstart=5)
+ggdata <- data.frame(scores_dienophile, Cluster=km$cluster)
+### paper numbering
+library(grid)
+set.seed(2300)
+y <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
+  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
+  ggtitle(" ") +
+  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
+               geom="polygon", level=0.95, alpha=0.2) +
+  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
+  #geom_text(aes(label=proteinname), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
   theme(
     legend.position=("none"),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)) +
-  #labs(y = expression( Predicted~(pIC[50])~ activity)) +
-  #labs(x = expression( Exprimental~(pIC[50])~ activity))
-  labs(y =  "Frequency") +
-  coord_cartesian(ylim = c(0, 120), xlim = c(-2, 2))
+    # plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
+    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
+    axis.text.y = element_text(size = 15),
+    axis.ticks.length = unit(0.3, "cm"),
+    axis.text.x = element_text(size = 15),
+    legend.title=element_blank(),
+    axis.title.x = element_text(color="black", size=20),
+    axis.title.y = element_text(color="black", size=20)) +
+  coord_cartesian(ylim = c(-5, 5), xlim = c(-4, 4))
+set.seed(200)
+km <- kmeans(loadings_dienophile, center=2, nstart=5)
+ggdata <- data.frame(loadings_dienophile, Cluster=km$cluster)
+labelprotein <- rownames(loadings)
+ggdata <- cbind(labelprotein, ggdata)
+### paper numbering
+library(grid)
+set.seed(23)
+b <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
+  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
+  ggtitle(" ") +
+  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
+               geom="polygon", level=0.95, alpha=0.2) +
+  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
+  #geom_text(aes(label=labelprotein), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
+  theme(
+    legend.position=("none"),
+    #plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
+    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
+    axis.text.y = element_text(size = 15),
+    axis.ticks.length = unit(0.3, "cm"),
+    axis.text.x = element_text(size = 15),
+    legend.title=element_blank(),
+    axis.title.x = element_text(color="black", size=20),
+    axis.title.y = element_text(color="black", size=20)) +
+  coord_cartesian(ylim = c(-0.8, 1), xlim = c(-0.8, 0.8))
 
-### preparing the results
-Diene <- Diene[, -nearZeroVar(Diene)]
-Dienophile <- Dienophile[, -nearZeroVar(Dienophile)]
-DieneXDienophile <- getCPI(Diene, Dienophile, type = "tensorprod")
-DieneXDienophile <- as.data.frame(DieneXDienophile)
+plot_grid(x, y,a, b,  labels = c("(a)", "(b)", "(c)", "(d)"), ncol = 2, label_size = 20, scale = 1)
 
-Label 
+
