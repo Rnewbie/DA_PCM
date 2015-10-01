@@ -5,7 +5,7 @@ date: "September 25, 2015"
 output: html_document
 ---
 
-Histogram plot for Diene
+Boxplot and Wisker plot for Diene (Ortho, Meta, Para)
 ```{r, echo = TRUE, cache = TRUE}
 library(readxl)
 library(caret)
@@ -19,175 +19,67 @@ dienophile <- read_excel("Dienophile.xlsx")
 ### pca analysis for diene
 diene_df <- diene[, 4:ncol(diene)]
 #diene_df <- diene_df[ , -nearZeroVar(diene_df)]
-descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
-                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
+descriptors <- c("HOMO", "LUMO", "GAP")
 diene_df <- diene_df[, descriptors]
-plot <- list(13)
+plot <- list(3)
 for (i in descriptors) {
-  data <- diene_df[, i]
-  plot <- ggplot(data = diene_df, aes(data)) + geom_histogram(col = "black", fill = "blue") + xlab(i) +
-    ylab("Frequency") + geom_vline(data = diene_df, aes(xintercept = mean(data), na.rm = TRUE),
-                                   colour = "black", linetype = "dashed", size = 1) +
+  data <- diene[, i]
+  plot <- ggplot(data = diene, aes(x = Product, y = data, fill = Product)) + geom_boxplot() + ylab(i) +
     theme(
+      legend.position = ("none"),
+      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
       axis.text.x = element_text(colour = "black", face = "bold"),
-      axis.text.y = element_text(colour = "black", face = "bold"),
-      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)
-    )
-  print(plot)
+      axis.text.y = element_text(colour = "black", face = "bold"))
+    print(plot)
 }
 
 ```
-
-Histogram for dienophile
+Boxplot and Wisker plot for Dienophile (Ortho, Meta, Para)
 
 ```{r, echo = TRUE, cache = TRUE}
+dienophile <- read_excel("Dienophile.xlsx")
 dienophile_df <- dienophile[, 4:ncol(dienophile)]
-descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
-                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
 dienophile_df <- dienophile_df[, descriptors]
-plot <- list(13)
+descriptors <- c("HOMO", "LUMO", "GAP")
+plot <- list(3)
 for (i in descriptors) {
-  data <- dienophile_df[, i]
-  plot <- ggplot(data = dienophile_df, aes(data)) + geom_histogram(col = "black", fill = "red") + xlab(i) +
-    ylab("Frequency") + geom_vline(data = dienophile_df, aes(xintercept = mean(data), na.rm = TRUE),
-                                   colour = "black", linetype = "dashed", size = 1) +
-    theme(
+  data <- diene[, i]
+  plot <- ggplot(data = dienophile, aes(x = Product, y = data, fill = Product)) + geom_boxplot() + ylab(i) + theme(
+      legend.position = ("none"),
+      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
       axis.text.x = element_text(colour = "black", face = "bold"),
-      axis.text.y = element_text(colour = "black", face = "bold"),
-      panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1)
-    )
-  print(plot)
+      axis.text.y = element_text(colour = "black", face = "bold"))
+    print(plot)
 }
-
 ```
 
-Selection Optimal PCs for Diene and Dienophile via Horn's Parallel Analysis
-```{r, echo = TRUE, cache = TRUE}
-set.seed(1)
-paran(diene_df)
-paran(dienophile_df)
-```
-
-PCA plot for diene and dienophile
+PCA data with cluster and Product Label Diene
 ```{r, echo = TRUE, cache = TRUE}
 pca <- prcomp(diene_df, center = TRUE, scale. = TRUE, retx = TRUE)
+Product <- diene$Product
 summary(pca)
-scores <- pca$x[,1:5]
-loadings <- pca$rotation[,1:5]
+scores <- pca$x[,1:2]
+loadings <- pca$rotation[,1:2]
 km <- kmeans(scores, center=3, nstart=5)
 ggdata <- data.frame(scores, Cluster=km$cluster)
-#ggdata <- cbind(compoundname, ggdata)
-### paper numbering
-library(grid)
-set.seed(23)
-x <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
-  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
-  ggtitle("") +
-  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
-               geom="polygon", level=0.95, alpha=0.2) +
-  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
-  #geom_text(aes(label=compoundnumber), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
-  theme(
-    legend.position=("none"),
-    #plot.title = element_text(size=20, face="bold", colour="black", vjust = -1, hjust=-0.21),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
-    axis.text.y = element_text(size = 15),
-    axis.ticks.length = unit(0.3, "cm"),
-    axis.text.x = element_text(size = 15),
-    legend.title=element_blank(),
-    axis.title.x = element_text(color="black", size=20),
-    axis.title.y = element_text(color="black", size=20)) +
-  coord_cartesian(ylim = c(-5, 5), xlim = c(-10, 10))
-x
-
-km <- kmeans(loadings, center=2, nstart=5)
-ggdata <- data.frame(loadings, Cluster=km$cluster)
-### paper numbering
-library(grid)
-set.seed(23)
-a <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
-  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
-  ggtitle("") +
-  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
-               geom="polygon", level=0.95, alpha=0.2) +
-  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
-  #geom_text(aes(label=labelcompound), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
-  theme(
-    legend.position=("none"),
-    #plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
-    axis.text.y = element_text(size = 15),
-    axis.ticks.length = unit(0.3, "cm"),
-    axis.text.x = element_text(size = 15),
-    legend.title=element_blank(),
-    axis.title.x = element_text(color="black", size=20),
-    axis.title.y = element_text(color="black", size=20)) +
-  coord_cartesian(ylim = c(-1, 1), xlim = c(-1, 1))
-
-
-### pca analysis for dienophile
-dienophile_df <- dienophile[, 4:ncol(dienophile)]
-descriptors <- c("MeanAbs", "RBN", "nCIC", "nHDon", "nHAcc", "TPSA(Tot)", "Energy", "Dipole",
-                 "MW", "HOMO", "LUMO", "GAP", "ALOGP")
-dienophile_df <- dienophile_df[, descriptors]
-pca_dienophile <- prcomp(dienophile_df, center = TRUE, scale. = TRUE, retx = TRUE)
-paran(dienophile_df)
-summary(pca_dienophile)
-scores_dienophile <- pca_dienophile$x[,1:5]
-loadings_dienophile <- pca_dienophile$rotation[,1:5]
-
-km <- kmeans(scores_dienophile, center=3, nstart=5)
-ggdata <- data.frame(scores_dienophile, Cluster=km$cluster)
-### paper numbering
-library(grid)
-set.seed(2300)
-y <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
-  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
-  ggtitle(" ") +
-  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
-               geom="polygon", level=0.95, alpha=0.2) +
-  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
-  #geom_text(aes(label=proteinname), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
-  theme(
-    legend.position=("none"),
-    # plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
-    axis.text.y = element_text(size = 15),
-    axis.ticks.length = unit(0.3, "cm"),
-    axis.text.x = element_text(size = 15),
-    legend.title=element_blank(),
-    axis.title.x = element_text(color="black", size=20),
-    axis.title.y = element_text(color="black", size=20)) +
-  coord_cartesian(ylim = c(-5, 5), xlim = c(-4, 4))
-set.seed(200)
-km <- kmeans(loadings_dienophile, center=2, nstart=5)
-ggdata <- data.frame(loadings_dienophile, Cluster=km$cluster)
-labelprotein <- rownames(loadings)
-ggdata <- cbind(labelprotein, ggdata)
-### paper numbering
-library(grid)
-set.seed(23)
-b <- ggplot(ggdata, aes(x = PC1, y = PC2, colour = Cluster)) +
-  geom_point(aes(fill=factor(Cluster)), size=5, shape=20, pch = 21, alpha = 0.8) +
-  ggtitle(" ") +
-  stat_ellipse(aes(fill=factor(Cluster)), colour = "black", 
-               geom="polygon", level=0.95, alpha=0.2) +
-  guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
-  #geom_text(aes(label=labelprotein), size=7, hjust=0.5, vjust= 1.5, alpha=0.45) +
-  theme(
-    legend.position=("none"),
-    #plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
-    panel.border = element_rect(linetype = "solid", colour = "black", fill = NA, size = 1),
-    axis.text.y = element_text(size = 15),
-    axis.ticks.length = unit(0.3, "cm"),
-    axis.text.x = element_text(size = 15),
-    legend.title=element_blank(),
-    axis.title.x = element_text(color="black", size=20),
-    axis.title.y = element_text(color="black", size=20)) +
-  coord_cartesian(ylim = c(-0.8, 1), xlim = c(-0.8, 0.8))
-
-plot_grid(x, y,a, b,  labels = c("(a)", "(b)", "(c)", "(d)"), ncol = 2, label_size = 20, scale = 1)
+ggdata <- cbind(ggdata, Product)
+print(ggdata)
 ```
+
+PCA data with cluster and Product Label Denophile
+```{r, echo = TRUE, cache = TRUE}
+pca <- prcomp(dienophile_df, center = TRUE, scale. = TRUE, retx = TRUE)
+Product <- diene$Product
+summary(pca)
+scores <- pca$x[,1:2]
+loadings <- pca$rotation[,1:2]
+km <- kmeans(scores, center=3, nstart=5)
+ggdata <- data.frame(scores, Cluster=km$cluster)
+ggdata <- cbind(ggdata, Product)
+print(ggdata)
+```
+
+
 
 Custom functions for results
 ```{r, echo = TRUE, cache = TRUE}
@@ -242,67 +134,20 @@ dienophileXdienophile <- as.data.frame(dienophileXdienophile)
 
 diene <- diene_df
 dienophile <- dienophile_df
+diene_dienophile_substract  <- diene - dienophile
+dienophile_diene_substract <- dienophile - diene
 diene_dienophile <- cbind(diene, dienophile)
-diene_dienophile_dieneXdienophile_block_scale <- cbind(diene, dienophile,
-                                           dieneXdienophile) * (1/sqrt(length(diene)+
-                                                                         length(dienophile)+
-                                                                         length(dieneXdienophile)))
-diene_dienophile_dieneXdiene_block_scale <- cbind(diene, dienophile,
-                                                  dieneXdiene) * (1/sqrt(length(diene)+
-                                                                           length(dienophile)+
-                                                                           length(dieneXdiene)))
-diene_dienophile_dienophileXdienophile_block_scale <- cbind(diene, dienophile,
-                                                            dienophileXdienophile) * (1/sqrt(length(diene)+
-                                                                                               length(dienophile)+
-                                                                                               length(dienophileXdienophile)))
-diene_dienophile_dieneXdienophile_dieneXdiene_block_scale <- cbind(diene,
-                                                                   dienophile,
-                                                                   dieneXdienophile,
-                                                                   dieneXdiene) * (1/sqrt(length(diene)+
-                                                                                            length(dienophile)+
-                                                                                            length(dieneXdienophile)+
-                                                                                            length(dieneXdiene)))
-diene_dienophile_dieneXdienophile_dienophileXdienophile_block_scale <- cbind(diene,
-                                                                              dienophile,
-                                                                              dieneXdienophile,
-                                                                             dienophileXdienophile) * (1/sqrt(length(diene)+
-                                                                                                                length(dienophile)+
-                                                                                                                length(dieneXdienophile)+
-                                                                                                                length(dienophileXdienophile)))
-diene_dienophile_dieneXdiene_dienophileXdienophile_block_scale <- cbind(diene,
-                                                                        dienophile,
-                                                                        dieneXdiene,
-                                                                        dienophileXdienophile) * (1/sqrt(length(diene)+
-                                                                                                           length(dienophile)+
-                                                                                                           length(dieneXdiene)+
-                                                                                                           length(dienophileXdienophile)))
-diene_dienophile_dieneXdienophile_dieneXdiene_dienophileXdienophile_block_scale <- cbind(diene,
-                                                                                         dienophile,
-                                                                                         dieneXdienophile,
-                                                                                         dieneXdiene,
-                                                                                         dienophileXdienophile) * (1/sqrt(length(diene)+
-                                                                                                                            length(dienophile)+
-                                                                                                                            length(dieneXdienophile)+
-                                                                                                                            length(dieneXdiene)+
-                                                                                                                            length(dienophileXdienophile)))
-diene <- cbind(Product, diene)
-dienophile <- cbind(Product,dienophile)
+colnames(diene_dienophile) <- c("HOMO_diene", "LUMO_diene", "GAP_diene", "HOMO_dienophile",
+                                "LUMO_dienophile", "GAP_dienophile")
+diene_dienophile_substract <- cbind(Product, diene_dienophile_substract)
+dienophile_diene_substract <- cbind(Product, dienophile_diene_substract)
 dieneXdienophile <- cbind(Product, dieneXdienophile)
-dieneXdiene <- cbind(Product, dieneXdiene)
-dienophileXdienophile <- cbind(Product, dienophileXdienophile)
 diene_dienophile <- cbind(Product, diene_dienophile)
-diene_dienophile_dieneXdienophile <- cbind(Product, diene_dienophile_dieneXdienophile_block_scale)
-diene_dienophile_dieneXdiene <- cbind(Product, diene_dienophile_dieneXdiene_block_scale)
-diene_dienophile_dienophileXdienophile <- cbind(Product, diene_dienophile_dienophileXdienophile_block_scale)
-diene_dienophile_dieneXdienophile_dieneXdiene <- cbind(Product, 
-      diene_dienophile_dieneXdienophile_dieneXdiene_block_scale)
-diene_dienophile_dieneXdienophile_dienophileXdienophile <- cbind(Product, 
-      diene_dienophile_dieneXdienophile_dienophileXdienophile_block_scale)
-diene_dienophile_dieneXdiene_dienophileXdienophile <- cbind(Product, 
-                                                            diene_dienophile_dieneXdiene_dienophileXdienophile_block_scale)
-diene_dienophile_dieneXdienophile_dieneXdiene_dienophileXdienophile <- cbind(Product, 
-      diene_dienophile_dieneXdienophile_dieneXdiene_dienophileXdienophile_block_scale)
 
+input <- list(diene_dienophile_substract = diene_dienophile_substract, 
+              dienophile_diene_substract = dienophile_diene_substract,
+              dieneXdienophile = dieneXdienophile,
+              diene_dienophile = diene_dienophile)
 
 
 #### training results using J48
@@ -315,6 +160,13 @@ J48_training <- function(x, Product){
     
   ok <- list(100)
   ok <- foreach(i = 1:100) %dopar% { 
+    meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
     in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
     train <- x[in_train, ]
     test <- x[-in_train, ]
@@ -325,6 +177,7 @@ J48_training <- function(x, Product){
     results <- results$table
     results <- table(prediction, actual)
     results <- as.numeric(results)
+    rm(model_train)
     ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
     #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
     #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -335,6 +188,13 @@ J48_training <- function(x, Product){
     
     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
@@ -345,6 +205,7 @@ J48_training <- function(x, Product){
       results <- results$table
       results <- table(prediction, actual)
       results <- as.numeric(results)
+      rm(model_train)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -355,6 +216,13 @@ J48_training <- function(x, Product){
   
   ok <- list(100)
   ok <- foreach(i = 1:100) %dopar% { 
+     meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
     in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
         train <- x[in_train, ]
         test <- x[-in_train, ]
@@ -365,6 +233,7 @@ J48_training <- function(x, Product){
         results <- results$table
         results <- table(prediction, actual)
         results <- as.numeric(results)
+        rm(model_train)
         #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
         #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
         ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -406,6 +275,7 @@ results_training_Meta <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -443,6 +313,7 @@ results_training_Ortho <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -452,7 +323,6 @@ results_training_Ortho <- function(x) {
                              "MCC_Mean", "MCC_SD")
   return(results_all)
 }
-
 
 results_training_Para <- function(x) {
   yes <- J48_training(x, Product = "Para")
@@ -481,6 +351,7 @@ results_training_Para <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -502,24 +373,9 @@ J48_training_all <- function(x) {
   return(result_all_mean)
 }
 
-input <- list(diene = diene,
-              dienophile = dienophile,
-              dieneXdienophile = dieneXdienophile,
-              dieneXdiene = dieneXdiene,
-              dienophileXdienophile = dienophileXdienophile)
-              #diene_dienophile = diene_dienophile,
-              #diene_dienophile_dieneXdienophile = diene_dienophile_dieneXdienophile,
-              #diene_dienophile_dieneXdiene = diene_dienophile_dieneXdiene,
-              #diene_dienophile_dienophileXdienophile = diene_dienophile_dienophileXdienophile,
-              #diene_dienophile_dieneXdienophile_dieneXdiene = diene_dienophile_dieneXdienophile_dieneXdiene,
-              #diene_dienophile_dieneXdienophile_dienophileXdienophile = diene_dienophile_dieneXdienophile_dienophileXdienophile,
-              #diene_dienophile_dieneXdiene_dienophileXdienophile = diene_dienophile_dieneXdiene_dienophileXdienophile,
-              #diene_dienophile_dieneXdienophile_dieneXdiene_dienophileXdienophile = diene_dienophile_dieneXdienophile_dieneXdiene_dienophileXdienophile
-
 
 #### 10fold  fold cross validation
 
-#### training results using J48
 J48_10_CV <- function(x, Product){
   if (Product == "Meta") {
     library(parallel)
@@ -529,6 +385,13 @@ J48_10_CV <- function(x, Product){
     
     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       myData <- x[in_train, ]
       test <- x[-in_train, ]
@@ -547,6 +410,7 @@ J48_10_CV <- function(x, Product){
       results <- table(prediction, actual)
       results <- as.numeric(results)
       results <- rbind(myRes, results)
+      rm(model_train)
       ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -556,7 +420,14 @@ J48_10_CV <- function(x, Product){
     registerDoSNOW(cl)
     
     ok <- list(100)
-    ok <- foreach(i = 1:100) %dopar% { 
+    ok <- foreach(i = 1:100) %dopar% {
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       myData <- x[in_train, ]
       test <- x[-in_train, ]
@@ -575,6 +446,7 @@ J48_10_CV <- function(x, Product){
       results <- table(prediction, actual)
       results <- as.numeric(results)
       results <- rbind(myRes, results)
+      rm(model_train)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -585,6 +457,13 @@ J48_10_CV <- function(x, Product){
     
     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       myData <- x[in_train, ]
       test <- x[-in_train, ]
@@ -603,6 +482,7 @@ J48_10_CV <- function(x, Product){
       results <- table(prediction, actual)
       results <- as.numeric(results)
       results <- rbind(myRes, results)
+      rm(model_train)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -644,6 +524,7 @@ results_CV_Meta <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -681,6 +562,7 @@ results_CV_Ortho <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -690,7 +572,6 @@ results_CV_Ortho <- function(x) {
                              "MCC_Mean", "MCC_SD")
   return(results_all)
 }
-
 
 results_CV_Para <- function(x) {
   yes <- J48_10_CV(x, Product = "Para")
@@ -719,6 +600,7 @@ results_CV_Para <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -753,6 +635,13 @@ J48_testing <- function(x, Product){
     
     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
@@ -773,6 +662,13 @@ J48_testing <- function(x, Product){
     
     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
@@ -793,6 +689,13 @@ J48_testing <- function(x, Product){
     
     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    x <- rbind(meta, para, ortho)
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
@@ -844,6 +747,7 @@ results_testing_Meta <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -881,6 +785,7 @@ results_testing_Ortho <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -890,7 +795,6 @@ results_testing_Ortho <- function(x) {
                              "MCC_Mean", "MCC_SD")
   return(results_all)
 }
-
 
 results_testing_Para <- function(x) {
   yes <- J48_testing(x, Product = "Para")
@@ -919,6 +823,7 @@ results_testing_Para <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
+  rm(yes)
   results_ACC <- mean_and_sd(ACC)
   results_SENS <- mean_and_sd(SENS)
   results_SPEC <- mean_and_sd(SPEC)
@@ -934,6 +839,9 @@ J48_testing_all <- function(x) {
   ortho <- results_testing_Ortho(x)
   para <- results_testing_Para(x)
   result_all <- cbind(meta, ortho, para)
+  rm(meta)
+  rm(ortho)
+  rm(para)
   total <- apply(result_all, 1, mean)
   result_all_mean <- cbind(result_all, total)
   colnames(result_all_mean) <- c("Meta", "Ortho", "Para", "Overall")
@@ -945,26 +853,29 @@ J48_testing_all <- function(x) {
 Results for the training J48 PCM 
 ```{r, echo = TRUE, cache = TRUE}
 results_J48_training <- lapply(input, function(x) {
-  models <- J48_training_all(x)
+  models <- suppressWarnings(J48_training_all(x))
   return(models)
 })
 print(results_J48_training)
+rm(results_J48_training)
 ```
 
 Results for the CV J48 PCM 
-```{r, echo = TRUE, cache = TRUE, eval = FALSE}
-results_J48_CV <- lapply(input, function(x) {
-  models <- J48_CV_all(x)
+```{r, echo = TRUE, cache = TRUE}
+results_J48_CV <- lapply(input, function(x){
+  models <- suppressWarnings(J48_CV_all(x))
   return(models)
 })
 print(results_J48_CV)
+rm(results_J48_CV)
 ```
 
 Results for testing J48 PCM
 ```{r, echo = TRUE, cache = TRUE}
 results_J48_testing <- lapply(input, function(x) {
-  models <- J48_testing_all(x)
+  models <- suppressWarnings(J48_testing_all(x))
   return(models)
 })
 print(results_J48_testing)
+rm(results_J48_testing)
 ```
