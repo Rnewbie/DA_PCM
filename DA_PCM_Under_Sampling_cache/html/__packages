@@ -13,3 +13,9 @@ foreach
 iterators
 snow
 doSNOW
+BiocGenerics
+Biobase
+S4Vectors
+IRanges
+GenomeInfoDb
+AnnotationDbi

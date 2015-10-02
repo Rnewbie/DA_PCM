@@ -1020,3 +1020,29 @@ results_J48_testing <- lapply(input, function(x) {
 print(results_J48_testing)
 rm(results_J48_testing)
 ```
+
+Distribution plot
+
+```{r, echo = FALSE, cache = TRUE}
+library(readxl)
+library(caret)
+library(paran)
+library(cowplot)
+library(Rcpi)
+diene <- read_excel("Diene.xlsx")
+dienophile <- read_excel("Dienophile.xlsx")
+## subset for diene
+diene_df <- diene[, 4:ncol(diene)]
+#diene_df <- diene_df[ , -nearZeroVar(diene_df)]
+descriptors <- c("HOMO", "LUMO", "GAP")
+diene_df <- diene_df[, descriptors]
+dienophile_df <- dienophile[, 4:ncol(dienophile)]
+dienophile_df <- dienophile_df[, descriptors]
+Product <- diene$Product
+Product <- as.factor(Product)
+plot <- ggplot(data.frame(Product),aes(x=Product))
+plot <- plot + geom_histogram(fill = "blue")
+print(plot)
+```
+
+
