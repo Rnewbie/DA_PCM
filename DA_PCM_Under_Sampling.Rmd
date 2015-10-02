@@ -93,6 +93,7 @@ J48_training <- function(x, Product){
     meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = FALSE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
@@ -131,6 +132,7 @@ J48_training <- function(x, Product){
     meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = FALSE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
@@ -169,6 +171,7 @@ J48_training <- function(x, Product){
     meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = FALSE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
@@ -343,62 +346,46 @@ J48_10_CV <- function(x, Product){
     cl <- makeCluster(8)
     registerDoSNOW(cl)
     
-    ok <- vector("list", 100)
+    ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% { 
     meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = TRUE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
     train_meta <- meta[in_train_meta, ]
     test_meta <- meta[-in_train_meta, ]
+    rm(meta)
+    rm(in_train_meta)
     in_train_ortho <- sample(nrow(ortho),
                              size = as.integer(nrow(ortho) * 0.8),
                              replace = FALSE)
     train_ortho <- ortho[in_train_ortho, ]
     test_ortho <- ortho[-in_train_ortho, ]
+    rm(ortho)
+    rm(in_train_ortho)
     in_train_para <- sample(nrow(para),
                             size = as.integer(nrow(para) * 0.8),
                             replace = FALSE)
     train_para <- para[in_train_para, ]
     test_para <- para[-in_train_para, ]
+    rm(para)
+    rm(in_train_para)
     myData <- rbind(train_meta, train_ortho, train_para)
+    rm(train_meta)
+    rm(train_ortho)
+    rm(train_para)
     test <- rbind(test_meta, test_ortho, test_para)
-      k = 10
-      index <- sample(1:k, nrow(myData), replace = TRUE)
-      folds <- 1:k
-      myRes <- data.frame()
-      for (j in 1:k)
-        training <- subset(myData, index %in% folds[-j])
-      testing <- subset(myData, index %in% c(j))
-      model_train <- RWeka::J48(Product~., data = training)
-      actual <- testing$Product
-      prediction <- predict(model_train, testing)
-      results <- caret::confusionMatrix(prediction, actual)
-      results <- results$table
-      results <- table(prediction, actual)
-      results <- as.numeric(results)
-      results <- rbind(myRes, results)
-      rm(meta)
-      rm(ortho)
-      rm(para)
-      rm(train_meta)
-      rm(test_meta)
-      rm(train_para)
-      rm(test_para)
-      rm(train_ortho)
-      rm(test_ortho)
-      rm(model_train)
-      rm(in_train)
-      rm(myData)
-      rm(test)
-      rm(index)
-      rm(folds)
-      rm(training)
-      rm(testing)
-      rm(actual)
-      rm(prediction)
+    rm(test_meta)
+    rm(test_ortho)
+    rm(test_para)
+    rm(test)
+     model_train <- RWeka::J48(Product~., data = myData)
+    eval_j48 <- RWeka::evaluate_Weka_classifier(model_train, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
+    confusionmatrix <- eval_j48$confusionMatrix
+    results <- as.numeric(confusionmatrix)
       ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -407,62 +394,46 @@ J48_10_CV <- function(x, Product){
     cl <- makeCluster(8)
     registerDoSNOW(cl)
     
-     ok <- vector("list", 100)
+     ok <- list(100)
     ok <- foreach(i = 1:100) %dopar% {
       meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = TRUE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
     train_meta <- meta[in_train_meta, ]
     test_meta <- meta[-in_train_meta, ]
+    rm(meta)
+    rm(intrain_meta)
     in_train_ortho <- sample(nrow(ortho),
                              size = as.integer(nrow(ortho) * 0.8),
                              replace = FALSE)
     train_ortho <- ortho[in_train_ortho, ]
     test_ortho <- ortho[-in_train_ortho, ]
+    rm(ortho)
+    rm(in_train_ortho)
     in_train_para <- sample(nrow(para),
                             size = as.integer(nrow(para) * 0.8),
                             replace = FALSE)
     train_para <- para[in_train_para, ]
     test_para <- para[-in_train_para, ]
+    rm(para)
+    rm(in_train_para)
     myData <- rbind(train_meta, train_ortho, train_para)
+    rm(train_meta)
+    rm(train_ortho)
+    rm(train_para)
     test <- rbind(test_meta, test_ortho, test_para)
-    k = 10
-      index <- sample(1:k, nrow(myData), replace = TRUE)
-      folds <- 1:k
-      myRes <- data.frame()
-      for (j in 1:k)
-        training <- subset(myData, index %in% folds[-j])
-      testing <- subset(myData, index %in% c(j))
-      model_train <- RWeka::J48(Product~., data = training)
-      actual <- testing$Product
-      prediction <- predict(model_train, testing)
-      results <- caret::confusionMatrix(prediction, actual)
-      results <- results$table
-      results <- table(prediction, actual)
-      results <- as.numeric(results)
-      results <- rbind(myRes, results)
-      rm(meta)
-      rm(ortho)
-      rm(para)
-      rm(train_meta)
-      rm(test_meta)
-      rm(train_para)
-      rm(test_para)
-      rm(train_ortho)
-      rm(test_ortho)
-      rm(model_train)
-      rm(in_train)
-      rm(myData)
-      rm(test)
-      rm(index)
-      rm(folds)
-      rm(training)
-      rm(testing)
-      rm(actual)
-      rm(prediction)
+    rm(test)
+    rm(test_meta)
+    rm(test_ortho)
+    rm(test_para)
+    model_train <- RWeka::J48(Product~., data = myData)
+    eval_j48 <- RWeka::evaluate_Weka_classifier(model_train, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
+    confusionmatrix <- eval_j48$confusionMatrix
+    results <- as.numeric(confusionmatrix)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -476,57 +447,41 @@ J48_10_CV <- function(x, Product){
       meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = TRUE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
     train_meta <- meta[in_train_meta, ]
     test_meta <- meta[-in_train_meta, ]
+    rm(meta)
+    rm(in_train_meta)
     in_train_ortho <- sample(nrow(ortho),
                              size = as.integer(nrow(ortho) * 0.8),
                              replace = FALSE)
     train_ortho <- ortho[in_train_ortho, ]
     test_ortho <- ortho[-in_train_ortho, ]
+    rm(ortho)
+    rm(in_train_ortho)
     in_train_para <- sample(nrow(para),
                             size = as.integer(nrow(para) * 0.8),
                             replace = FALSE)
     train_para <- para[in_train_para, ]
     test_para <- para[-in_train_para, ]
+    rm(para)
+    rm(in_train_para)
     myData <- rbind(train_meta, train_ortho, train_para)
+    rm(train_meta)
+    rm(train_ortho)
+    rm(train_para)
     test <- rbind(test_meta, test_ortho, test_para)
-    k = 10
-      index <- sample(1:k, nrow(myData), replace = TRUE)
-      folds <- 1:k
-      myRes <- data.frame()
-      for (j in 1:k)
-        training <- subset(myData, index %in% folds[-j])
-      testing <- subset(myData, index %in% c(j))
-      model_train <- RWeka::J48(Product~., data = training)
-      actual <- testing$Product
-      prediction <- predict(model_train, testing)
-      results <- caret::confusionMatrix(prediction, actual)
-      results <- results$table
-      results <- table(prediction, actual)
-      results <- as.numeric(results)
-      results <- rbind(myRes, results)
-     rm(meta)
-      rm(ortho)
-      rm(para)
-      rm(train_meta)
-      rm(test_meta)
-      rm(train_para)
-      rm(test_para)
-      rm(train_ortho)
-      rm(test_ortho)
-      rm(model_train)
-      rm(in_train)
-      rm(myData)
-      rm(test)
-      rm(index)
-      rm(folds)
-      rm(training)
-      rm(testing)
-      rm(actual)
-      rm(prediction)
+    rm(test)
+    rm(test_meta)
+    rm(test_ortho)
+    rm(test_para)
+   model_train <- RWeka::J48(Product~., data = myData)
+    eval_j48 <- RWeka::evaluate_Weka_classifier(model_train, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
+    confusionmatrix <- eval_j48$confusionMatrix
+    results <- as.numeric(confusionmatrix)
       #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
       #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
       ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
@@ -691,6 +646,7 @@ J48_testing <- function(x, Product){
     meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = FALSE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
@@ -706,6 +662,9 @@ J48_testing <- function(x, Product){
                             replace = FALSE)
     train_para <- para[in_train_para, ]
     test_para <- para[-in_train_para, ]
+    rm(meta)
+    rm(ortho)
+    rm(para)
     train <- rbind(train_meta, train_ortho, train_para)
     test <- rbind(test_meta, test_ortho, test_para)
         model_train <- RWeka::J48(Product~., data = train)
@@ -715,9 +674,6 @@ J48_testing <- function(x, Product){
       results <- results$table
       results <- table(prediction, actual)
       results <- as.numeric(results)
-      rm(meta)
-      rm(ortho)
-      rm(para)
       rm(in_train_meta)
       rm(train_meta)
       rm(test_meta)
@@ -744,6 +700,7 @@ J48_testing <- function(x, Product){
       meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = FALSE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
@@ -797,6 +754,7 @@ J48_testing <- function(x, Product){
       meta <- subset(x, Product == "Meta")
     ortho <- subset(x, Product == "Ortho")
     para <- subset(x, Product == "Para")
+    ortho <- dplyr::sample_n(ortho, size = 20, replace = FALSE)
     in_train_meta <- sample(nrow(meta), 
                             size = as.integer(nrow(meta) * 0.8),
                             replace = FALSE)
@@ -992,7 +950,7 @@ J48_testing_all <- function(x) {
 ```
 
 Results for the training J48 PCM 
-```{r, echo = TRUE, cache = TRUE}
+```{r, echo = FALSE, cache = TRUE}
 results_J48_training <- lapply(input, function(x) {
   models <- suppressWarnings(J48_training_all(x))
   return(models)
@@ -1002,7 +960,7 @@ rm(results_J48_training)
 ```
 
 Results for the CV J48 PCM 
-```{r, echo = TRUE, cache = TRUE, eval = TRUE}
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
 results_J48_CV <- lapply(input, function(x){
   models <- suppressWarnings(J48_CV_all(x))
   return(models)
@@ -1012,7 +970,7 @@ rm(results_J48_CV)
 ```
 
 Results for testing J48 PCM
-```{r, echo = TRUE, cache = TRUE, eval = TRUE}
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
 results_J48_testing <- lapply(input, function(x) {
   models <- suppressWarnings(J48_testing_all(x))
   return(models)
