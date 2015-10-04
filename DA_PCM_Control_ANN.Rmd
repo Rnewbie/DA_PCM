@@ -406,7 +406,7 @@ mean_and_sd <- function(x) {
 
 
 results_CV_Meta <- function(x) {
-  yes <- J48_10_CV(x, Product = "Meta")
+  yes <- ANN_10_CV(x, Product = "Meta")
   great <- data.frame(yes)
   TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -446,7 +446,7 @@ results_CV_Meta <- function(x) {
 }
 
 results_CV_Ortho <- function(x) {
-  yes <- J48_10_CV(x, Product = "Ortho")
+  yes <- ANN_10_CV(x, Product = "Ortho")
   great <- data.frame(yes)
   TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -486,7 +486,7 @@ results_CV_Ortho <- function(x) {
 }
 
 results_CV_Para <- function(x) {
-  yes <- J48_10_CV(x, Product = "Para")
+  yes <- ANN_10_CV(x, Product = "Para")
   great <- data.frame(yes)
   TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -525,7 +525,7 @@ results_CV_Para <- function(x) {
   return(results_all)
 }
 
-J48_CV_all <- function(x) {
+ANN_CV_all <- function(x) {
   meta <- results_CV_Meta(x)
   ortho <- results_CV_Ortho(x)
   para <- results_CV_Para(x)
@@ -543,7 +543,7 @@ J48_CV_all <- function(x) {
 
 
 #### training results using J48
-J48_testing <- function(x, Product){
+ANN_testing <- function(x, Product){
   if (Product == "Meta") {
     library(parallel)
     library(doSNOW)
@@ -555,9 +555,10 @@ J48_testing <- function(x, Product){
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
-      model_train <- RWeka::J48(Product~., data = train)
+      model_train <- nnet::nnet(Product~., data = train, size = 3, 
+                              decay = 2, trace = FALSE, na.action = na.omit)
       actual <- test$Product
-      prediction <- predict(model_train, test)
+      prediction <- predict(model_train, test, type = "class")
       results <- caret::confusionMatrix(prediction, actual)
       results <- results$table
       results <- table(prediction, actual)
@@ -576,9 +577,10 @@ J48_testing <- function(x, Product){
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
-      model_train <- RWeka::J48(Product~., data = train)
+      model_train <- nnet::nnet(Product~., data = train, size = 3, 
+                              decay = 2, trace = FALSE, na.action = na.omit)
       actual <- test$Product
-      prediction <- predict(model_train, test)
+      prediction <- predict(model_train, test, type = "class")
       results <- caret::confusionMatrix(prediction, actual)
       results <- results$table
       results <- table(prediction, actual)
@@ -596,9 +598,10 @@ J48_testing <- function(x, Product){
       in_train <- caret::createDataPartition(x$Product, p = 0.80, list = FALSE)
       train <- x[in_train, ]
       test <- x[-in_train, ]
-      model_train <- RWeka::J48(Product~., data = train)
+      model_train <- nnet::nnet(Product~., data = train, size = 3, 
+                              decay = 2, trace = FALSE, na.action = na.omit)
       actual <- test$Product
-      prediction <- predict(model_train, test)
+      prediction <- predict(model_train, test, type = "class")
       results <- caret::confusionMatrix(prediction, actual)
       results <- results$table
       results <- table(prediction, actual)
@@ -619,7 +622,7 @@ mean_and_sd <- function(x) {
 
 
 results_testing_Meta <- function(x) {
-  yes <- J48_testing(x, Product = "Meta")
+  yes <- ANN_testing(x, Product = "Meta")
   great <- data.frame(yes)
   TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -659,7 +662,7 @@ results_testing_Meta <- function(x) {
 }
 
 results_testing_Ortho <- function(x) {
-  yes <- J48_testing(x, Product = "Ortho")
+  yes <- ANN_testing(x, Product = "Ortho")
   great <- data.frame(yes)
   TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -699,7 +702,7 @@ results_testing_Ortho <- function(x) {
 }
 
 results_testing_Para <- function(x) {
-  yes <- J48_testing(x, Product = "Para")
+  yes <- ANN_testing(x, Product = "Para")
   great <- data.frame(yes)
   TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -737,7 +740,7 @@ results_testing_Para <- function(x) {
   return(results_all)
 }
 
-J48_testing_all <- function(x) {
+ANN_testing_all <- function(x) {
   meta <- results_testing_Meta(x)
   ortho <- results_testing_Ortho(x)
   para <- results_testing_Para(x)
@@ -759,26 +762,26 @@ results_ANN_training <- lapply(input, function(x) {
   models <- suppressWarnings(ANN_training_all(x))
   return(models)
 })
-print(results_J48_training)
-rm(results_J48_training)
+print(results_ANN_training)
+rm(results_ANN_training)
 ```
 
 Results for the CV J48 PCM 
 ```{r, echo = TRUE, cache = TRUE, eval = TRUE}
-results_J48_CV <- lapply(input, function(x){
-  models <- suppressWarnings(J48_CV_all(x))
+results_ANN_CV <- lapply(input, function(x){
+  models <- suppressWarnings(ANN_10_CV(x))
   return(models)
 })
-print(results_J48_CV)
-rm(results_J48_CV)
+print(results_ANN_CV)
+rm(results_ANN_CV)
 ```
 
 Results for testing J48 PCM
 ```{r, echo = TRUE, cache = TRUE}
-results_J48_testing <- lapply(input, function(x) {
-  models <- suppressWarnings(J48_testing_all(x))
+results_ANN_testing <- lapply(input, function(x) {
+  models <- suppressWarnings(ANN_testing_all(x))
   return(models)
 })
-print(results_J48_testing)
-rm(results_J48_testing)
+print(results_ANN_testing)
+rm(results_ANN_testing)
 ```

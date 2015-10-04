@@ -867,33 +867,78 @@ J48_testing_all <- function(x) {
 
 ```
 
-Results for the training J48 PCM 
-```{r, echo = TRUE, cache = TRUE}
-results_J48_training <- lapply(input, function(x) {
-  models <- suppressWarnings(J48_training_all(x))
-  return(models)
-})
-print(results_J48_training)
-rm(results_J48_training)
+##Results for the training J48 PCM##
+Print diene_dienophile_substract
+```{r, echo = FALSE, cache = TRUE}
+models <- suppressWarnings(J48_training_all(diene_dienophile_substract))
+print(models)
 ```
 
-Results for the CV J48 PCM 
-```{r, echo = TRUE, cache = TRUE}
-results_J48_CV <- lapply(input, function(x){
-  models <- suppressWarnings(J48_CV_all(x))
-  return(models)
-})
-print(results_J48_CV)
-rm(results_J48_CV)
+Print dienophile_diene_substract
+```{r, echo = FALSE, cache = TRUE}
+models <- suppressWarnings(J48_training_all(dienophile_diene_substract))
+print(models)
 ```
 
-Results for testing J48 PCM
-```{r, echo = TRUE, cache = TRUE}
-results_J48_testing <- lapply(input, function(x) {
-  models <- suppressWarnings(J48_testing_all(x))
-  return(models)
-})
-print(results_J48_testing)
+Print dieneXdienophile
+```{r, echo = FALSE, cache = TRUE, eval = FALSE}
+models <- suppressWarnings(J48_training_all(dieneXdienophile))
+print(models)
 ```
 
+Print diene_dienophile
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
+models <- suppressWarnings(J48_training_all(diene_dienophile))
+print(models)
+```
+
+##Results for the 10 fold cross validation##
+Print diene_dienophile_substract
+```{r, echo = FALSE, cache = TRUE}
+models <- suppressWarnings(J48_CV_all(diene_dienophile_substract))
+print(models)
+```
+
+Print dienophile_diene_substract
+```{r, echo = FALSE, cache = TRUE}
+models <- suppressWarnings(J48_CV_all(dienophile_diene_substract))
+print(models)
+```
+
+Print dieneXdienophile
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
+models <- suppressWarnings(J48_CV_all(dieneXdienophile))
+print(models)
+```
+
+Print diene_dienophile
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
+models <- suppressWarnings(J48_CV_all(diene_dienophile))
+print(models)
+```
+
+##Results for testing##
+Print diene_dienophile_substract
+```{r, echo = FALSE, cache = TRUE}
+models <- suppressWarnings(J48_testing_all(diene_dienophile_substract))
+print(models)
+```
+
+Print dienophile_diene_substract
+```{r, echo = FALSE, cache = TRUE}
+models <- suppressWarnings(J48_testing_all(dienophile_diene_substract))
+print(models)
+```
+
+Print dieneXdienophile
+```{r, echo = FALSE, cache = TRUE, eval = FALSE}
+models <- suppressWarnings(J48_testing_all(dieneXdienophile))
+print(models)
+```
+
+Print diene_dienophile
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
+models <- suppressWarnings(J48_testing_all(diene_dienophile))
+print(models)
+```
 
