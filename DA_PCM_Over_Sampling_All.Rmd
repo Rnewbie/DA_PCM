@@ -1,0 +1,899 @@
+---
+title: "DA_PCM_Over_Sampling_All"
+author: "Saw Simeon, Chanin Nantasanamat"
+date: "October 3, 2015"
+output: html_document
+---
+
+
+```{r, echo = FALSE, cache = TRUE}
+library(readxl)
+library(caret)
+library(paran)
+library(cowplot)
+library(Rcpi)
+library(readxl)
+library(Rcpi)
+diene <- read_excel("Diene.xlsx")
+dienophile <- read_excel("Dienophile.xlsx")
+## subset for diene
+diene_df <- diene[, 4:ncol(diene)]
+names <- colnames(diene_df)
+
+
+
+dienophile_df <- dienophile[, colnames(dienophile) %in% names]
+
+names <- colnames(dienophile_df)
+diene_df <- diene_df[, colnames(diene_df) %in% names]
+
+dim(diene_df)
+dim(dienophile_df)
+
+
+Product <- diene$Product
+Product <- as.factor(Product)
+dieneXdienophile <- getCPI(diene_df, dienophile_df, type = "tensorprod")
+dieneXdienophile <- as.data.frame(dieneXdienophile)
+
+### cross terms
+dfDiene <- names(data.frame(diene_df[, 1:ncol(diene_df)]))
+dfDienophile <- names(data.frame(dienophile_df[, 1:ncol(dienophile_df)]))
+dieneNamecross <- rep(dfDiene, each = ncol(diene_df))
+dienophileNamecross <- rep(dfDienophile, times = ncol(dienophile_df))
+
+label <- paste(dieneNamecross, dienophileNamecross, sep = "_")
+
+colnames(dieneXdienophile) <- label
+dieneXdienophile <- as.data.frame(dieneXdienophile)
+
+```
+
+```{r, echo = FALSE, cache = TRUE}
+diene <- diene_df
+dienophile <- dienophile_df
+diene_dienophile_substract  <- diene - dienophile
+dienophile_diene_substract <- dienophile - diene
+dfDiene <- names(data.frame(diene_df[, 1:ncol(diene_df)]))
+label_diene <- paste0("Diene_", dfDiene)
+colnames(diene) <- label_diene
+dfDienophile <- names(data.frame(dienophile_df[, 1:ncol(dienophile_df)]))
+label_dienophile <- paste0("Dienophile_", dfDienophile)
+colnames(dienophile) <- label_dienophile
+diene_dienophile <- cbind(diene, dienophile)
+
+
+diene_dienophile_substract <- cbind(Product, diene_dienophile_substract)
+dienophile_diene_substract <- cbind(Product, dienophile_diene_substract)
+dieneXdienophile <- cbind(Product, dieneXdienophile)
+diene_dienophile <- cbind(Product, diene_dienophile)
+
+input <- list(diene_dienophile_substract = diene_dienophile_substract, 
+              dienophile_diene_substract = dienophile_diene_substract,
+              dieneXdienophile = dieneXdienophile,
+              diene_dienophile = diene_dienophile)
+
+```
+
+```{r, echo = FALSE, cache = TRUE}
+
+#### training results using J48
+J48_training <- function(x, Product){
+  if (Product == "Meta") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+  ok <- list(100)
+  ok <- foreach(i = 1:100) %dopar% { 
+    meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(meta)
+    rm(para)
+    rm(ortho)
+    in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+    train <- data[in_train, ]
+    test <- data[-in_train, ]
+    rm(data)
+    rm(in_train)
+    rm(test)
+    model_train <- RWeka::J48(Product~., data = train)
+    actual <- train$Product
+    prediction <- predict(model_train, train)
+    rm(model_train)
+    rm(train)
+    results <- caret::confusionMatrix(prediction, actual)
+    results <- results$table
+    results <- table(prediction, actual)
+    rm(prediction)
+    rm(actual)
+    results <- as.numeric(results)
+    ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+    #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+    #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+  }
+}  else if (Product == "Ortho") {
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(meta)
+    rm(para)
+    rm(ortho)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      train <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(in_train)
+      rm(test)
+      rm(data)
+      model_train <- RWeka::J48(Product~., data = train)
+      actual <- train$Product
+      prediction <- predict(model_train, train)
+      rm(train)
+      rm(model_train)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      rm(prediction)
+      rm(actual)
+      results <- as.numeric(results)
+      #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    } 
+}  else if (Product == "Para") {
+  cl <- makeCluster(8)
+  registerDoSNOW(cl)
+  
+  ok <- list(100)
+  ok <- foreach(i = 1:100) %dopar% { 
+     meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(meta)
+    rm(para)
+    rm(ortho)
+    in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+        train <- data[in_train, ]
+        test <- data[-in_train, ]
+        rm(data)
+        rm(in_train)
+        rm(test)
+        model_train <- RWeka::J48(Product~., data = train)
+        actual <- train$Product
+        prediction <- predict(model_train, train)
+        rm(model_train)
+        rm(train)
+        results <- caret::confusionMatrix(prediction, actual)
+        results <- results$table
+        results <- table(prediction, actual)
+        results <- as.numeric(results)
+        rm(prediction)
+        rm(actual)
+        #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+        #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+        ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+      }
+  return(ok)
+  stopCluster(cl)
+} }
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 4),
+    round(sd(x, na.rm = TRUE), digits = 4))
+}
+
+
+results_training_Meta <- function(x) {
+  yes <- J48_training(x, Product = "Meta")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  rm(great)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+  
+results_training_Ortho <- function(x) {
+  yes <- J48_training(x, Product = "Ortho")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+results_training_Para <- function(x) {
+  yes <- J48_training(x, Product = "Para")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                         "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+J48_training_all <- function(x) {
+  meta <- results_training_Meta(x)
+  ortho <- results_training_Ortho(x)
+  para <- results_training_Para(x)
+  result_all <- cbind(meta, ortho, para)
+  total <- apply(result_all, 1, mean)
+  result_all_mean <- cbind(result_all, total)
+  colnames(result_all_mean) <- c("Meta", "Ortho", "Para", "Overall")
+  return(result_all_mean)
+}
+
+
+#### 10fold  fold cross validation
+
+J48_10_CV <- function(x, Product){
+  if (Product == "Meta") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(ortho)
+    rm(para)
+    rm(ortho)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      myData <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(data)
+      rm(in_train)
+      rm(test)
+      k = 10
+      index <- sample(1:k, nrow(myData), replace = TRUE)
+      folds <- 1:k
+      myRes <- data.frame()
+      for (j in 1:k)
+        training <- subset(myData, index %in% folds[-j])
+      testing <- subset(myData, index %in% c(j))
+      rm(myData)
+      model_train <- RWeka::J48(Product~., data = training)
+      rm(training)
+      actual <- testing$Product
+      prediction <- predict(model_train, testing)
+      rm(model_train)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      rm(prediction)
+      rm(actual)
+      results <- as.numeric(results)
+      results <- rbind(myRes, results)
+      ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    }
+  }  else if (Product == "Ortho") {
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(meta)
+    rm(para)
+    rm(ortho)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      myData <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(data)
+      rm(in_train)
+      rm(test)
+      k = 10
+      index <- sample(1:k, nrow(myData), replace = TRUE)
+      folds <- 1:k
+      myRes <- data.frame()
+      for (j in 1:k)
+        training <- subset(myData, index %in% folds[-j])
+      testing <- subset(myData, index %in% c(j))
+      rm(myData)
+      model_train <- RWeka::J48(Product~., data = training)
+      rm(training)
+      actual <- testing$Product
+      prediction <- predict(model_train, testing)
+      rm(model_train)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      rm(prediction)
+      rm(actual)
+      results <- as.numeric(results)
+      results <- rbind(myRes, results)
+      #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    } 
+  }  else if (Product == "Para") {
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      myData <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(in_train)
+      rm(data)
+      rm(test)
+      k = 10
+      index <- sample(1:k, nrow(myData), replace = TRUE)
+      folds <- 1:k
+      myRes <- data.frame()
+      for (j in 1:k)
+        training <- subset(myData, index %in% folds[-j])
+      testing <- subset(myData, index %in% c(j))
+      rm(myData)
+      model_train <- RWeka::J48(Product~., data = training)
+      rm(training)
+      actual <- testing$Product
+      prediction <- predict(model_train, testing)
+      rm(training)
+      rm(testing)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      results <- as.numeric(results)
+      results <- rbind(myRes, results)
+      rm(prediction)
+      rm(actual)
+      #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  } }
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 4),
+    round(sd(x, na.rm = TRUE), digits = 4))
+}
+
+
+results_CV_Meta <- function(x) {
+  yes <- J48_10_CV(x, Product = "Meta")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  rm(great)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+results_CV_Ortho <- function(x) {
+  yes <- J48_10_CV(x, Product = "Ortho")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+results_CV_Para <- function(x) {
+  yes <- J48_10_CV(x, Product = "Para")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+J48_CV_all <- function(x) {
+  meta <- results_CV_Meta(x)
+  ortho <- results_CV_Ortho(x)
+  para <- results_CV_Para(x)
+  result_all <- cbind(meta, ortho, para)
+  rm(meta)
+  rm(ortho)
+  rm(para)
+  total <- apply(result_all, 1, mean)
+  result_all_mean <- cbind(result_all, total)
+  colnames(result_all_mean) <- c("Meta", "Ortho", "Para", "Overall")
+  return(result_all_mean)
+}
+
+
+
+
+#### training results using J48
+J48_testing <- function(x, Product){
+  if (Product == "Meta") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(meta)
+    rm(para)
+    rm(ortho)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      train <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(data)
+      rm(in_train)
+      model_train <- RWeka::J48(Product~., data = train)
+      rm(train)
+      actual <- test$Product
+      prediction <- predict(model_train, test)
+      rm(model_train)
+      rm(test)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      rm(prediction)
+      rm(actual)
+      results <- as.numeric(results)
+      ok[[i]] <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    }
+  }  else if (Product == "Ortho") {
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(para)
+    rm(ortho)
+    rm(meta)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      train <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(data)
+      rm(in_train)
+      model_train <- RWeka::J48(Product~., data = train)
+      rm(train)
+      actual <- test$Product
+      prediction <- predict(model_train, test)
+      rm(model_train)
+      rm(test)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      rm(prediction)
+      rm(actual)
+      results <- as.numeric(results)
+      #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      ok[[i]] <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      #Para <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    } 
+  }  else if (Product == "Para") {
+    cl <- makeCluster(8)
+    registerDoSNOW(cl)
+    
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% { 
+       meta <- subset(x, Product == "Meta")
+    para <- subset(x, Product == "Para")
+    ortho <- subset(x, Product == "Ortho")
+    meta <- dplyr::sample_n(meta, size = 50, replace = TRUE)
+    para <- dplyr::sample_n(para, size = 50, replace = TRUE)
+    ortho <- dplyr::sample_n(ortho, size = 50, replace = TRUE)
+    data <- rbind(meta, para, ortho)
+    rm(meta)
+    rm(para)
+    rm(ortho)
+      in_train <- caret::createDataPartition(data$Product, p = 0.80, list = FALSE)
+      train <- data[in_train, ]
+      test <- data[-in_train, ]
+      rm(data)
+      rm(in_train)
+      model_train <- RWeka::J48(Product~., data = train)
+      rm(train)
+      actual <- test$Product
+      prediction <- predict(model_train, test)
+      rm(model_train)
+      rm(test)
+      results <- caret::confusionMatrix(prediction, actual)
+      results <- results$table
+      results <- table(prediction, actual)
+      rm(prediction)
+      rm(actual)
+      results <- as.numeric(results)
+      #Meta <- cbind(results[[1]], (results[[2]] + results[[3]]), (results[[4]] + results[[7]]), (results[[5]] + results[[9]]))
+      #Ortho <- cbind(results[5], (results[2] + results[8]), (results[4] + results[6]), (results[1] + results[9]))
+      ok[[i]] <- cbind(results[9], (results[3] + results[6]), (results[4] + results[6]), (results[1] + results[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  } }
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 4),
+    round(sd(x, na.rm = TRUE), digits = 4))
+}
+
+
+results_testing_Meta <- function(x) {
+  yes <- J48_testing(x, Product = "Meta")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+results_testing_Ortho <- function(x) {
+  yes <- J48_testing(x, Product = "Ortho")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+results_testing_Para <- function(x) {
+  yes <- J48_testing(x, Product = "Para")
+  great <- data.frame(yes)
+  TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  rm(yes)
+  results_ACC <- mean_and_sd(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  return(results_all)
+}
+
+J48_testing_all <- function(x) {
+  meta <- results_testing_Meta(x)
+  ortho <- results_testing_Ortho(x)
+  para <- results_testing_Para(x)
+  result_all <- cbind(meta, ortho, para)
+  rm(meta)
+  rm(ortho)
+  rm(para)
+  total <- apply(result_all, 1, mean)
+  result_all_mean <- cbind(result_all, total)
+  colnames(result_all_mean) <- c("Meta", "Ortho", "Para", "Overall")
+  return(result_all_mean)
+}
+
+```
+
+Results for the training J48 PCM 
+```{r, echo = TRUE, cache = TRUE}
+results_J48_training <- lapply(input, function(x) {
+  models <- suppressWarnings(J48_training_all(x))
+  return(models)
+})
+print(results_J48_training)
+rm(results_J48_training)
+```
+
+Results for the CV J48 PCM 
+```{r, echo = TRUE, cache = TRUE}
+results_J48_CV <- lapply(input, function(x){
+  models <- suppressWarnings(J48_CV_all(x))
+  return(models)
+})
+print(results_J48_CV)
+rm(results_J48_CV)
+```
+
+Results for testing J48 PCM
+```{r, echo = TRUE, cache = TRUE}
+results_J48_testing <- lapply(input, function(x) {
+  models <- suppressWarnings(J48_testing_all(x))
+  return(models)
+})
+print(results_J48_testing)
+```
+
+
