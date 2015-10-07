@@ -881,7 +881,7 @@ print(models)
 ```
 
 Print dieneXdienophile
-```{r, echo = FALSE, cache = TRUE, eval = FALSE}
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
 models <- suppressWarnings(J48_training_all(dieneXdienophile))
 print(models)
 ```
@@ -931,7 +931,7 @@ print(models)
 ```
 
 Print dieneXdienophile
-```{r, echo = FALSE, cache = TRUE, eval = FALSE}
+```{r, echo = FALSE, cache = TRUE, eval = TRUE}
 models <- suppressWarnings(J48_testing_all(dieneXdienophile))
 print(models)
 ```
