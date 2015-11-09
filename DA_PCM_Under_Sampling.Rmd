@@ -65,19 +65,25 @@ dienophileXdienophile <- as.data.frame(dienophileXdienophile)
 diene <- diene_df
 dienophile <- dienophile_df
 diene_dienophile_substract  <- diene - dienophile
+diene_dienophile_substract <- c("HOMO_diene_dienophile", "LUMO_diene_dienophile", "GAP_diene_dienophile")
 dienophile_diene_substract <- dienophile - diene
+dienophile_diene_substract <- c("HOMO_dienophile_diene", "LUMO_dienophile_diene", "GAP_dienophile_diene")
 diene_dienophile <- cbind(diene, dienophile)
 colnames(diene_dienophile) <- c("HOMO_diene", "LUMO_diene", "GAP_diene", "HOMO_dienophile",
                                 "LUMO_dienophile", "GAP_dienophile")
+combine <- cbind(diene_dienophile_substract, dienophile_diene_substract, 
+                 dieneXdienophile, diene_dienophile)
 diene_dienophile_substract <- cbind(Product, diene_dienophile_substract)
 dienophile_diene_substract <- cbind(Product, dienophile_diene_substract)
 dieneXdienophile <- cbind(Product, dieneXdienophile)
 diene_dienophile <- cbind(Product, diene_dienophile)
+combine <- cbind(Product, combine)
 
 input <- list(diene_dienophile_substract = diene_dienophile_substract, 
               dienophile_diene_substract = dienophile_diene_substract,
               dieneXdienophile = dieneXdienophile,
-              diene_dienophile = diene_dienophile)
+              diene_dienophile = diene_dienophile,
+              combine = combine)
 
 
 #### training results using J48
