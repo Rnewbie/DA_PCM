@@ -1,0 +1,15 @@
+base
+readxl
+lattice
+ggplot2
+caret
+MASS
+paran
+cowplot
+DBI
+RSQLite
+Rcpi
+foreach
+iterators
+snow
+doSNOW
